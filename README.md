@@ -392,6 +392,8 @@ docker-compose logs -f fraud-check-system
 
 ## Additional Documentation
 
-- `README-OpenTelemetry.md`: Detailed OpenTelemetry setup and configuration
-- `README-validation-error-examples.md`: API error response examples
-- `Coding_Exercise_SolArch.md`: Original requirements specification
+- [Open Telemetry Doc](docs/README-OpenTelemetry.md): Detailed OpenTelemetry setup and configuration
+- [Validation Error Examples](docs/README-validation-error-examples.md): API error response examples
+- [Presentation](docs/Payment_Fraud_Check_Demo.pptx) Powerpoint Presentation
+- [Exercise Requirements](docs/Coding_Exercise_SolArch.md): Original requirements specification converted to markdown
+- [Exercise Requirements](docs/Coding_Exercise_SolArch.docx): Original requirements specification
