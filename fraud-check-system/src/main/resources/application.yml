@@ -1,0 +1,126 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: fraud-check-system
+  profiles:
+    active: dev
+  cloud:
+    consul:
+      host: localhost
+      port: 8500
+      discovery:
+        service-name: fraud-check-system
+        health-check-path: /actuator/health
+        health-check-interval: 10s
+  activemq:
+    broker-url: tcp://localhost:61616
+    user: ${ARTEMIS_USER:admin}
+    password: ${ARTEMIS_PASSWORD:admin}
+    pool:
+      enabled: true
+      max-connections: 100
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+      
+camel:
+  springboot:
+    name: FraudCheckService
+    jackson:
+      enable-module-jsr310: true
+      write-dates-as-timestamps: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+# OpenTelemetry configuration
+otel:
+  service:
+    name: fraud-check-system
+    version: 1.0.0
+  exporter:
+    otlp:
+      endpoint: http://localhost:4317
+  traces:
+    exporter: otlp
+  metrics:
+    exporter: otlp
+  logs:
+    exporter: otlp
+
+queue:
+  fraudcheck:
+    request: jms:queue:payment.requests
+    response: jms:queue:payment.response
+
+    
+logging:
+  level:
+    root: INFO
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%X{traceId:-},%X{spanId:-}] [%thread] %-5level %logger{36} - %msg%n"
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  
+logging:
+  level:
+    com.demo: DEBUG
+    org.springframework.cloud: INFO
+  file:
+    name: logs/fraud-check-service.log
+    
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+  cloud:
+    consul:
+      host: ${SPRING_CLOUD_CONSUL_HOST:consul}
+      port: 8500
+  activemq:
+    broker-url: ${ACTIVEMQ_BROKER_URL:tcp://activemq:61616}
+    user: ${ARTEMIS_USER:admin}
+    password: ${ARTEMIS_PASSWORD:admin}
+
+management:
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://otel-collector:4318}/v1/traces
+
+# OpenTelemetry configuration for docker
+otel:
+  exporter:
+    otlp:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://otel-collector:4317}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+logging:
+  level:
+    root: WARN
+    com.demo: INFO
+    AUDIT: INFO

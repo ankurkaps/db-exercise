@@ -1,0 +1,176 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+  
+  # Not supported
+  # Fluentd receiver for Docker container logs
+  #fluentforward:
+  #  endpoint: 0.0.0.0:24224
+
+  # Host metrics for infrastructure monitoring
+  # Doesnt work with MAC & Podman. Works on linux hosts
+  hostmetrics:
+    scrapers:
+      load:
+      memory:
+      cpu:
+      disk:
+      filesystem:
+      network:
+  
+  # Add this receiver for Docker logs
+  # Doesnt work with MAC & Podman (Path not accessible)
+  # Add Docker logs for infrastructure containers
+  filelog:
+    include: [/var/lib/docker/containers/*/*-json.log]
+    poll_interval: 200ms
+    start_at: end
+    include_file_name: false
+    include_file_path: false
+    operators:
+      - type: json_parser
+        parse_from: body
+        parse_to: attributes
+      - type: add
+        field: attributes.service.name
+        value: "docker-container"
+
+extensions:
+  basicauth/grafana_cloud:
+    client_auth:
+      username: "${env:GRAFANA_CLOUD_USER}"
+      password: "${env:GRAFANA_CLOUD_PASSWORD}"
+  
+  health_check:
+    endpoint: 0.0.0.0:13133
+  pprof:
+    endpoint: 0.0.0.0:1777
+  zpages:
+    endpoint: 0.0.0.0:55679
+
+processors:
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+    send_batch_max_size: 2048
+  
+  # Resource detection and enrichment for proper host identification
+  resourcedetection:
+    detectors: ["env", "system", "docker"]
+    override: false
+    system:
+      hostname_sources: ["os"]
+    timeout: 5s
+  
+  # Add resource attributes for proper host tracking
+  resource:
+    attributes:
+      - key: service.instance.id
+        from_attribute: host.name
+        action: insert
+      - key: deployment.environment
+        value: "development"
+        action: insert
+      - key: host.id
+        from_attribute: host.name
+        action: insert
+      - key: service.name
+        from_attribute: host.name
+        action: insert   # <-- Only sets service.name if it is missing
+      - key: service.namespace
+        value: "payment-service"
+        action: insert
+
+
+  # Transform to clean up unnecessary attributes (Grafana Cloud optimization)
+  transform/drop_unneeded_resource_attributes:
+    error_mode: ignore
+    trace_statements:
+      - context: resource
+        statements:
+          - delete_key(attributes, "os.description")
+          - delete_key(attributes, "os.type")
+          - delete_key(attributes, "process.command_args")
+          - delete_key(attributes, "process.executable.path")
+          - delete_key(attributes, "process.pid")
+    metric_statements:
+      - context: resource
+        statements:
+          - delete_key(attributes, "os.description")
+          - delete_key(attributes, "os.type")
+          - delete_key(attributes, "process.command_args")
+          - delete_key(attributes, "process.executable.path")
+          - delete_key(attributes, "process.pid")
+    log_statements:
+      - context: resource
+        statements:
+          - delete_key(attributes, "os.description")
+          - delete_key(attributes, "os.type")
+          - delete_key(attributes, "process.command_args")
+          - delete_key(attributes, "process.executable.path")
+          - delete_key(attributes, "process.pid")
+
+  # Add resource attributes as metric attributes (simplified)
+  transform/add_resource_attributes_as_metric_attributes:
+    error_mode: ignore
+    metric_statements:
+      - context: datapoint
+        statements:
+          - set(attributes["deployment.environment"], resource.attributes["deployment.environment"])
+          - set(attributes["service.version"], resource.attributes["service.version"])
+          - set(attributes["host.name"], resource.attributes["host.name"])
+          - set(attributes["host.id"], resource.attributes["host.id"])
+
+exporters:
+  # Forward to external SigNoz OTEL collector on host machine
+  # otlp/signoz:
+  #   endpoint: host.docker.internal:4317
+  #   tls:
+  #     insecure: true
+
+  # Forward to local Grafana OTEL (grafana/otel-lgtm service)
+  otlp/grafana:
+    endpoint: grafana:4317
+    tls:
+      insecure: true
+
+  # Forward to Grafana Cloud
+  otlphttp/grafana_cloud:
+    endpoint: "https://otlp-gateway-prod-eu-west-2.grafana.net/otlp"
+    auth:
+      authenticator: basicauth/grafana_cloud
+
+  # Prometheus exporter for metrics
+  # Local Prometheus exporter for debugging and backup
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    send_timestamps: true
+    metric_expiration: 180m
+
+  # Console exporter for debugging
+  debug:
+    verbosity: normal
+
+service:
+  extensions: [basicauth/grafana_cloud, health_check, pprof, zpages]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [resourcedetection, resource, transform/drop_unneeded_resource_attributes, batch]
+      exporters: [otlp/grafana, otlphttp/grafana_cloud, debug]
+    metrics:
+      receivers: [otlp, hostmetrics]
+      processors: [resourcedetection, resource, transform/drop_unneeded_resource_attributes, transform/add_resource_attributes_as_metric_attributes, batch]
+      exporters: [otlp/grafana, otlphttp/grafana_cloud, prometheus, debug]
+    logs:
+      receivers: [otlp, filelog]
+      processors: [resourcedetection, resource, transform/drop_unneeded_resource_attributes, batch]
+      exporters: [otlp/grafana, otlphttp/grafana_cloud, debug]
+
+  telemetry:
+    logs:
+      level: "info"

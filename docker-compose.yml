@@ -1,0 +1,198 @@
+#version: '3.8'
+
+services:
+  # Infrastructure Services
+  activemq:
+    image: apache/activemq-artemis:2.42.0-alpine
+    container_name: activemq
+    hostname: activemq
+    ports:
+      - "61616:61616"
+      - "8161:8161"  # Console
+      - "1099:1099"  # JMX port for metrics collection
+    environment:
+      ARTEMIS_USER: ${ARTEMIS_USER}
+      ARTEMIS_PASSWORD: ${ARTEMIS_PASSWORD}
+      # Enable detailed logging
+      ARTEMIS_LOGGING_LEVEL: INFO
+    volumes:
+      - activemq_data:/var/lib/artemis-instance/data
+      - activemq_logs:/var/lib/artemis-instance/log
+    # logging:
+    #   driver: fluentd
+    #   options:
+    #     fluentd-address: fluentd:24224
+    #     tag: activemq
+    #depends_on:
+    #  - fluentd
+    networks:
+      - payment-network
+
+  # Grafana open telemetry stack
+  grafana:
+    image: grafana/otel-lgtm:0.11.10
+    container_name: grafana
+    hostname: grafana
+    ports:
+      - "3000:3000"   # Grafana UI only; do not expose OTLP host ports to avoid conflicts
+    #  - "4317:4317"   # OTLP gRPC (for traces/metrics/logs)
+    #  - "4318:4318"   # OTLP HTTP (for traces/metrics/logs)
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - payment-network
+
+  consul:
+    image: consul:1.15
+    container_name: consul
+    hostname: consul
+    ports:
+      - "8500:8500"
+    environment:
+      - CONSUL_BIND_INTERFACE=eth0
+    command: consul agent -dev -client=0.0.0.0
+    # logging:
+    #   driver: fluentd
+    #   options:
+    #     fluentd-address: fluentd:24224
+    #     tag: consul
+    #depends_on:
+    #  - fluentd
+    networks:
+      - payment-network
+
+  # NOTE: Doesnt work with MacOS & Podman
+  # Fluentd for Docker log collection  
+  #fluentd:
+  #  image: fluent/fluentd:v1.16-debian-1
+  #  container_name: fluentd
+  #  volumes:
+  #    - ./fluentd.conf:/fluentd/etc/fluent.conf
+  #  ports:
+  #    - "24224:24224"   # Fluentd forward protocol
+  #  networks:
+  #    - payment-network
+
+  # OpenTelemetry Collector
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.135.0
+    container_name: otel-collector
+    hostname: otel-collector
+    command: ["--config=/etc/otel-collector-config.yml"]
+    volumes:
+      - ./otel-collector-config.yml:/etc/otel-collector-config.yml
+    ports:
+      - "14317:4317"   # OTLP gRPC receiver
+      - "14318:4318"   # OTLP HTTP receiver
+    #  - "24225:24224"   # Fluentd forward receiver (different host port)
+      - "18889:8889"   # Prometheus metrics
+    environment:
+      - GRAFANA_CLOUD_USER="${GRAFANA_CLOUD_USER}"
+      - GRAFANA_CLOUD_PASSWORD="${GRAFANA_CLOUD_PASSWORD}"
+    #depends_on:
+    #  - fluentd
+    networks:
+      - payment-network
+
+
+  # Application Services
+  payment-processing-system:
+    build:
+      context: .
+      dockerfile: payment-processing-system/Dockerfile
+    container_name: payment-processing-system
+    hostname: payment-processing-system
+    ports:
+      - "8081:8081"
+    environment:
+      - "SPRING_PROFILES_ACTIVE=docker"
+      - "SPRING_CLOUD_CONSUL_HOST=consul"
+      - "ACTIVEMQ_BROKER_URL=tcp://activemq:61616"
+      - "OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318"
+      - "OTEL_METRICS_EXPORTER=otlp"
+      - "OTEL_LOGS_EXPORTER=otlp"
+      - "OTEL_SERVICE_NAME=payment-service"
+    # logging:
+    #   driver: fluentd
+    #   options:
+    #     fluentd-address: fluentd:24224
+    #     tag: payment-service
+    depends_on:
+      - consul
+      - activemq
+      - otel-collector
+    #  - fluentd
+    networks:
+      - payment-network
+
+  broker-system:
+    build:
+      context: .
+      dockerfile: broker-system/Dockerfile
+    container_name: broker-system
+    hostname: broker-system
+    ports:
+      - "8082:8082"
+    environment:
+      - "SPRING_PROFILES_ACTIVE=docker"
+      - "SPRING_CLOUD_CONSUL_HOST=consul"
+      - "ACTIVEMQ_BROKER_URL=tcp://activemq:61616"
+      - "OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318"
+      - "OTEL_METRICS_EXPORTER=otlp"
+      - "OTEL_LOGS_EXPORTER=otlp"
+      - "OTEL_SERVICE_NAME=broker-service"
+    # logging:
+    #   driver: fluentd
+    #   options:
+    #     fluentd-address: fluentd:24224
+    #     tag: broker-service
+    depends_on:
+      - consul
+      - activemq
+      - otel-collector
+    #  - fluentd
+    networks:
+      - payment-network
+
+  fraud-check-system:
+    build:
+      context: .
+      dockerfile: fraud-check-system/Dockerfile
+    container_name: fraud-check-system
+    hostname: fraud-check-system
+    ports:
+      - "8083:8083"
+    environment:
+      - "SPRING_PROFILES_ACTIVE=docker"
+      - "SPRING_CLOUD_CONSUL_HOST=consul"
+      - "ACTIVEMQ_BROKER_URL=tcp://activemq:61616"
+      - "OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318"
+      - "OTEL_METRICS_EXPORTER=otlp"
+      - "OTEL_LOGS_EXPORTER=otlp"
+      - "OTEL_SERVICE_NAME=fraud-check-service"
+    # logging:
+    #   driver: fluentd
+    #   options:
+    #     fluentd-address: fluentd:24224
+    #     tag: fraud-check-service
+    depends_on:
+      - consul
+      - activemq
+      - otel-collector
+      #- fluentd
+    networks:
+      - payment-network
+
+
+volumes:
+  activemq_data:
+  activemq_logs:
+  grafana_data:
+
+networks:
+  payment-network:
+    name: "payment-network"
+    driver: bridge

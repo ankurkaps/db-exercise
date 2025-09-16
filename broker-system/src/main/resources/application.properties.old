@@ -1,0 +1,42 @@
+spring.application.name=broker-system
+server.port=8082
+
+# ActiveMQ Configuration for FCS Communication
+spring.activemq.broker-url=tcp://localhost:61616
+spring.activemq.user=${ARTEMIS_USER:admin}
+spring.activemq.password=${ARTEMIS_PASSWORD:admin}
+
+# Camel Configuration
+camel.springboot.main-run-controller=true
+
+# REST API Configuration
+camel.rest.api-context-path=/api
+camel.rest.api-host=localhost
+camel.rest.api-port=${server.port}
+camel.rest.enable-cors=true
+
+camel.main.tracing-standby = true
+
+
+
+# Logging
+logging.level.root=debug
+logging.level.org.apache.camel=INFO
+logging.level.org.springframework.web=TRACE
+logging.level.org.springframework.web.servlet.mvc.method.annotation.RequestResponseBodyMethodProcessor=TRACE
+logging.level.org.springframework.web.filter.CommonsRequestLoggingFilter=DEBUG
+
+logging.level.com.example=DEBUG
+
+
+logging.level.org.apache.activemq.transport.AbstractInactivityMonitor=info
+logging.level.javax.management.remote.rmi=info
+logging.level.sun.rmi=info
+logging.level.org.apache.activemq.ActiveMQMessageConsumer=info
+
+# Queues Configuration
+# Payment Route Configuration
+payment.route.jms.requestQueue=jms:queue:q.demo.payments.pps.bs.payment.request.v1
+payment.route.jms.responseQueue=jms:queue:q.demo.payments.bs.pps.fraud.response.v1
+fraudcheck.route.jms.requestQueue=jms:queue:q.demo.payments.bs.fcs.fraud.request.v1
+fraudcheck.route.jms.responseQueue=jms:queue:q.demo.payments.fcs.bs.fraud.response.v1

@@ -1,0 +1,16 @@
+{
+  "transactionId": "550e8400-e29b-41d4-a716-446655440000",
+  "payerName": "John Doe",
+  "payerBank": "Bank of America",
+  "payerCountryCode": "USA",
+  "payerAccount": "1234567890",
+  "payeeName": "Jane Smith",
+  "payeeBank": "JPMorgan Chase",
+  "payeeCountryCode": "GBR",
+  "payeeAccount": "0987654321",
+  "paymentInstruction": "Salary payment",
+  "executionDate": "2024-12-31",
+  "amount": 1000.00,
+  "currency": "USD",
+  "creationTimestamp": "2024-01-01T10:00:00Z"
+}

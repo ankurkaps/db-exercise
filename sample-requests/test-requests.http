@@ -1,0 +1,136 @@
+# Payment Fraud Check System - Test Requests
+
+### Valid Payment Request (Should be approved)
+POST http://localhost:8080/api/v1/payments
+Content-Type: application/json
+
+{
+  "transactionId": "550e8400-e29b-41d4-a716-446655440000",
+  "payerName": "John Doe",
+  "payerBank": "Bank of America",
+  "payerCountryCode": "USA",
+  "payerAccount": "1234567890",
+  "payeeName": "Jane Smith",
+  "payeeBank": "JPMorgan Chase",
+  "payeeCountryCode": "GBR",
+  "payeeAccount": "0987654321",
+  "paymentInstruction": "Salary payment",
+  "executionDate": "2024-12-31",
+  "amount": 1000.00,
+  "currency": "USD",
+  "creationTimestamp": "2024-01-01T10:00:00Z"
+}
+
+### Blacklisted Name Request (Should be rejected)
+POST http://localhost:8080/api/v1/payments
+Content-Type: application/json
+
+{
+  "transactionId": "550e8400-e29b-41d4-a716-446655440001",
+  "payerName": "Mark Imaginary",
+  "payerBank": "Bank of America",
+  "payerCountryCode": "USA",
+  "payerAccount": "1234567890",
+  "payeeName": "Jane Smith",
+  "payeeBank": "JPMorgan Chase",
+  "payeeCountryCode": "GBR",
+  "payeeAccount": "0987654321",
+  "paymentInstruction": "Salary payment",
+  "executionDate": "2024-12-31",
+  "amount": 1000.00,
+  "currency": "USD",
+  "creationTimestamp": "2024-01-01T10:00:00Z"
+}
+
+### Blacklisted Country Request (Should be rejected)
+POST http://localhost:8080/api/v1/payments
+Content-Type: application/json
+
+{
+  "transactionId": "550e8400-e29b-41d4-a716-446655440002",
+  "payerName": "John Doe",
+  "payerBank": "Bank of America",
+  "payerCountryCode": "CUB",
+  "payerAccount": "1234567890",
+  "payeeName": "Jane Smith",
+  "payeeBank": "JPMorgan Chase",
+  "payeeCountryCode": "GBR",
+  "payeeAccount": "0987654321",
+  "paymentInstruction": "Salary payment",
+  "executionDate": "2024-12-31",
+  "amount": 1000.00,
+  "currency": "USD",
+  "creationTimestamp": "2024-01-01T10:00:00Z"
+}
+
+### Blacklisted Bank Request (Should be rejected)
+POST http://localhost:8080/api/v1/payments
+Content-Type: application/json
+
+{
+  "transactionId": "550e8400-e29b-41d4-a716-446655440003",
+  "payerName": "John Doe",
+  "payerBank": "BANK OF KUNLUN",
+  "payerCountryCode": "USA",
+  "payerAccount": "1234567890",
+  "payeeName": "Jane Smith",
+  "payeeBank": "JPMorgan Chase",
+  "payeeCountryCode": "GBR",
+  "payeeAccount": "0987654321",
+  "paymentInstruction": "Salary payment",
+  "executionDate": "2024-12-31",
+  "amount": 1000.00,
+  "currency": "USD",
+  "creationTimestamp": "2024-01-01T10:00:00Z"
+}
+
+### Blacklisted Instruction Request (Should be rejected)
+POST http://localhost:8080/api/v1/payments
+Content-Type: application/json
+
+{
+  "transactionId": "550e8400-e29b-41d4-a716-446655440004",
+  "payerName": "John Doe",
+  "payerBank": "Bank of America",
+  "payerCountryCode": "USA",
+  "payerAccount": "1234567890",
+  "payeeName": "Jane Smith",
+  "payeeBank": "JPMorgan Chase",
+  "payeeCountryCode": "GBR",
+  "payeeAccount": "0987654321",
+  "paymentInstruction": "Artillery Procurement",
+  "executionDate": "2024-12-31",
+  "amount": 1000.00,
+  "currency": "USD",
+  "creationTimestamp": "2024-01-01T10:00:00Z"
+}
+
+### Invalid Currency Request (Should be rejected due to validation)
+POST http://localhost:8080/api/v1/payments
+Content-Type: application/json
+
+{
+  "transactionId": "550e8400-e29b-41d4-a716-446655440005",
+  "payerName": "John Doe",
+  "payerBank": "Bank of America",
+  "payerCountryCode": "USA",
+  "payerAccount": "1234567890",
+  "payeeName": "Jane Smith",
+  "payeeBank": "JPMorgan Chase",
+  "payeeCountryCode": "GBR",
+  "payeeAccount": "0987654321",
+  "paymentInstruction": "Salary payment",
+  "executionDate": "2024-12-31",
+  "amount": 1000.00,
+  "currency": "XXX",
+  "creationTimestamp": "2024-01-01T10:00:00Z"
+}
+
+### Get Payment Status
+GET http://localhost:8080/api/v1/payments/550e8400-e29b-41d4-a716-446655440000/status
+
+### Health Check
+GET http://localhost:8080/actuator/health
+
+### Metrics
+GET http://localhost:8080/actuator/metrics

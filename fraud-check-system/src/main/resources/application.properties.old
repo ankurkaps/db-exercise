@@ -1,0 +1,14 @@
+spring.application.name=fraud-check-system
+server.port=8083
+
+# ActiveMQ Configuration
+spring.activemq.broker-url=tcp://localhost:61616
+spring.activemq.user=${ARTEMIS_USER:admin}
+spring.activemq.password=${ARTEMIS_PASSWORD:admin}
+
+# Camel Configuration
+camel.springboot.main-run-controller=true
+camel.main.tracing-standby = true
+
+#fraudcheck.route.jms.requestQueue=jms:queue:q.demo.payments.bs.fcs.fraud.request.v1
+#fraudcheck.route.jms.responseQueue=jms:queue:q.demo.payments.fcs.bs.fraud.response.v1

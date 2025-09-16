@@ -1,0 +1,27 @@
+FCS 
+- REST with XML or SOAP?
+- SOAP - RPC or Document?
+- The default naming convention for SOAP is 
+
+
+Common Naming Conventions
+
+paymentInstruction
+
+Either is valid XML, but the usual conventions:
+    If you want a direct mapping from the Java field name paymentInstruction, use paymentInstruction (preserves camelCase).
+    If you follow XML element-name conventions that prefer PascalCase (common in some schemas like SOAP/WSDL or .NET interop), use PaymentInstruction.
+
+
+Common JSON conventions:
+
+    camelCase: paymentInstruction — most common for JavaScript/Java clients.
+    PascalCase: PaymentInstruction — used when matching .NET styles or certain APIs.
+    snake_case: payment_instruction — common in Python/Ruby eco-systems.
+    kebab-case: payment-instruction — allowed but less common (hyphens require quoting).
+
+Concious decision to use 
+
+
+
+docker run --detach --name activemq -p 61616:61616 -p 8161:8161 --rm apache/activemq-artemis:latest-alpine
